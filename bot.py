@@ -1,17 +1,42 @@
 import os
+import json
 import yt_dlp
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 
 BOT_TOKEN = "8963777053:AAE2FuQAsSjoM0-1q6TRtzfQYVKf8I9cUxE"
+ADMIN_ID = None
+USERS_FILE = "users.json"
+
+def load_users():
+    try:
+        with open(USERS_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return {}
+
+def save_user(user_id, username, name):
+    users = load_users()
+    users[str(user_id)] = {"username": username, "name": name}
+    with open(USERS_FILE, "w") as f:
+        json.dump(users, f)
 
 def is_valid_url(text):
     return text.startswith("http://") or text.startswith("https://")
 
 async def start(update, ctx):
-    await update.message.reply_text("🎵 Mazza Bot ga xush kelibsiz!\n\nVideo yoki musiqa havolasini yuboring!")
+    user = update.effective_user
+    save_user(user.id, user.username, user.full_name)
+    await update.message.reply_text(f"🎵 Mazza Bot ga xush kelibsiz, {user.first_name}!\n\nVideo yoki musiqa havolasini yuboring!")
+
+async def stats(update, ctx):
+    users = load_users()
+    count = len(users)
+    await update.message.reply_text(f"📊 Statistika:\n\n👥 Foydalanuvchilar: {count} ta")
 
 async def handle_url(update, ctx):
+    user = update.effective_user
+    save_user(user.id, user.username, user.full_name)
     url = update.message.text.strip()
     if not is_valid_url(url):
         await update.message.reply_text("❌ Havola yuboring!")
@@ -48,16 +73,3 @@ async def handle_callback(update, ctx):
         await query.delete_message()
         os.remove(path)
     except Exception as e:
-        await query.edit_message_text(f"❌ Xato: {str(e)[:100]}")
-
-def main():
-    app = Application.builder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(handle_callback))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_url))
-    print("🎵 Mazza Bot ishga tushdi!")
-    app.run_polling()
-
-if __name__ == "__main__":
-    main()
-  
